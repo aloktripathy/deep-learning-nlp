@@ -75,7 +75,7 @@ w2v_model = load_word_2_vec_model(WORD_2_VEC_MODEL)
 v_size = w2v_model.vector_size
 word_idx = get_word_index(w2v_model)
 
-x, y = get_training_sequences(DATA_DIRECTORY, word_idx, max_seq_length=SEQ_LENGTH, skip=3)
+x, y = get_training_sequences(DATA_DIRECTORY, word_idx, max_seq_length=SEQ_LENGTH, skip=2)
 x = sequences_to_vectors(x, SEQ_LENGTH, w2v_model)
 y = sequences_to_vectors(y, SEQ_LENGTH, w2v_model)
 # In a stateful network, you should only pass inputs with a number of samples that can be
