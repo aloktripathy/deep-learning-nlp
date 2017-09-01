@@ -4,6 +4,7 @@ import numpy as np
 
 from tensorflow.contrib.keras import models
 from tensorflow.contrib.keras import layers
+from tensorflow.contrib.keras import callbacks
 
 
 def generate_word_2_vec(directory, filename, min_count=5, vector_size=50):
@@ -68,6 +69,7 @@ SEQ_LENGTH = 15
 RNN_SIZE = 512
 STATEFUL = True
 BATCH_SIZE = 64
+EPOCHS = 30
 
 w2v_model = load_word_2_vec_model(WORD_2_VEC_MODEL)
 v_size = w2v_model.vector_size
@@ -112,8 +114,12 @@ model.add(
 model.add(
     layers.LSTM(v_size, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
 )
-model.compile('rmsprop', 'mean_squared_error', metrics=['accuracy'])
+model.compile('rmsprop', 'cosine', metrics=['accuracy'])
 
-for i in range(3):
+filepath = "checkpoint/got/1"
+checkpoint = callbacks.ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+callbacks_list = [checkpoint]
+
+for i in range(EPOCHS):
     model.fit(x, y, batch_size=64, epochs=1)
     generate_sequence(model, 100)
