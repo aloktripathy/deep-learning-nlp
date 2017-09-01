@@ -69,7 +69,7 @@ SEQ_LENGTH = 15
 RNN_SIZE = 512
 STATEFUL = True
 BATCH_SIZE = 64
-EPOCHS = 30
+EPOCHS = 50
 
 w2v_model = load_word_2_vec_model(WORD_2_VEC_MODEL)
 v_size = w2v_model.vector_size
@@ -116,10 +116,12 @@ model.add(
 )
 model.compile('rmsprop', 'cosine', metrics=['accuracy'])
 
-filepath = "checkpoint/got/1"
+filepath = "checkpoints/got/1"
 checkpoint = callbacks.ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
-for i in range(EPOCHS):
+for e in range(EPOCHS):
     model.fit(x, y, batch_size=64, epochs=1)
     generate_sequence(model, 100)
+    if (e + 1) % 5 == 0:
+        model.save('checkpoints/got/{}.h5'.format(e))
