@@ -28,6 +28,7 @@ m = tflearn.SequenceGenerator(g, dictionary=char_idx,
                               max_checkpoints=0,
                               checkpoint_path='x')
 
+
 def train(epochs):
     for i in range(epochs):
         seed = random_sequence_from_string(string_utf8, maxlen)

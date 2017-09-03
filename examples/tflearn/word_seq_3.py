@@ -1,18 +1,7 @@
 from utils import SentenceReader
 from gensim.models import Word2Vec
 import numpy as np
-
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from keras import backend as K
-from keras.models import Sequential
-from keras.layers import LSTM
-from keras.layers.core import Activation
-from keras.layers.core import Dense
-from keras.layers import Embedding
-from keras.layers import TimeDistributed
-from keras.engine.topology import Layer
-from keras.utils.np_utils import to_categorical
+import tflearn
 
 
 def generate_word_2_vec(directory, filename, min_count=5, vector_size=50):
@@ -33,7 +22,7 @@ def get_word_index(w2v_model):
     return {word: idx for idx, word in enumerate(w2v_model.wv.index2word)}
 
 
-def get_training_sequences(directory, word_index, max_seq_length=15, unknown_word=0):
+def get_training_sequences(directory, word_index, max_seq_length=15, unknown_word=-1):
     sequence = []
     reader = SentenceReader(directory)
     for words in reader:
@@ -96,15 +85,6 @@ VOCAB_SIZE = len(w2v_model.wv.vocab)
 word_idx = get_word_index(w2v_model)
 
 x, y = get_training_sequences(DATA_DIRECTORY, word_idx, max_seq_length=SEQ_LENGTH)
-x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.1, random_state=2112)
-# del x
-# del y
-# In a stateful network, you should only pass inputs with a number of samples that can be
-# divided by the batch size.
-truncated_input_size_train = x_train.shape[0] // BATCH_SIZE * BATCH_SIZE
-truncated_input_size_val = x_val.shape[0] // BATCH_SIZE * BATCH_SIZE
-x_train, y_train = x_train[:truncated_input_size_train, :], y_train[:truncated_input_size_train, :]
-x_val, y_val = x_val[:truncated_input_size_val, :], y_val[:truncated_input_size_val, :]
 
 
 def get_random_sequence():
@@ -124,37 +104,34 @@ def generate_sequence(model, seq_length=100):
     indexes_to_words(sequence[0])
 
 
-def build_model():
-    weights = w2v_model.wv.syn0
-    model = Sequential()
-    model.add(
-        Embedding(input_dim=VOCAB_SIZE, output_dim=N_VECTORS,
-                  weights=[weights], input_length=SEQ_LENGTH,
-                  batch_input_shape=[BATCH_SIZE, SEQ_LENGTH], trainable=False),
-    )
-    model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
-    model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
-    model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
-    model.add(TimeDistributed(Dense(VOCAB_SIZE)))
-    model.add(Activation('softmax'))
-    model.compile('rmsprop', 'categorical_crossentropy', metrics=['accuracy'])
-    return model
+g = tflearn.input_data(shape=[None, SEQ_LENGTH])
+g = tflearn.embedding(g, input_dim=VOCAB_SIZE, output_dim=N_VECTORS, name='embedding_layer')
+g = tflearn.lstm(g, 512, return_seq=True)
+g = tflearn.dropout(g, 0.5)
+g = tflearn.lstm(g, 512)
+g = tflearn.dropout(g, 0.5)
+g = tflearn.fully_connected(g, VOCAB_SIZE, activation='softmax')
+g = tflearn.regression(g, optimizer='rmsprop', loss='categorical_crossentropy', learning_rate=0.001)
+
+m = tflearn.SequenceGenerator(g, dictionary=word_idx,
+                              seq_maxlen=SEQ_LENGTH,
+                              clip_gradients=5.0,
+                              max_checkpoints=3,
+                              checkpoint_path='checkpoints/got/tfl/')
+
+embedding_weights = tflearn.get_layer_variables_by_name('embedding_layer')[0]
+m.set_weights(embedding_weights, w2v_model.wv.syn0)
 
 
-def to_one_hot(sequences):
-    return to_categorical(sequences, VOCAB_SIZE).reshape(-1, SEQ_LENGTH, VOCAB_SIZE)
-
-
-def train(model):
-    y_val_ = to_one_hot(y_val)
-    for e in range(EPOCHS):
-        # We are going this because one massive one-hot Y won't fit our memory.
-        batch_batch_size = BATCH_SIZE * 100
-        for k in range(0, len(x_train), batch_batch_size):
-            x_train_ = x_train[k:k+batch_batch_size, :]
-            y_train_ = to_one_hot(y_train[k:k+batch_batch_size, :])
-            model.fit(x_train_, y_train_, batch_size=BATCH_SIZE,
-                      epochs=1, validation_data=(x_val, y_val_))
-        generate_sequence(model, 100)
-        if (e + 1) % 5 == 0:
-            model.save('checkpoints/got/{}.h5'.format(e))
+def train(epochs):
+    for i in range(epochs):
+        seed = get_random_sequence()
+        m.fit(x, y, validation_set=0.1, batch_size=128,
+              n_epoch=1, run_id='got')
+        print("-- TESTING...")
+        print("-- Test with temperature of 1.2 --")
+        print(m.generate(30, temperature=1.2, seq_seed=seed))
+        print("-- Test with temperature of 1.0 --")
+        print(m.generate(30, temperature=1.0, seq_seed=seed))
+        print("-- Test with temperature of 0.5 --")
+        print(m.generate(30, temperature=0.5, seq_seed=seed))
