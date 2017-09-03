@@ -2,6 +2,8 @@ from utils import SentenceReader
 from gensim.models import Word2Vec
 import numpy as np
 
+from sklearn.model_selection import train_test_split
+
 from tensorflow.contrib.keras import models
 from tensorflow.contrib.keras import layers
 from tensorflow.contrib.keras import callbacks
@@ -78,10 +80,15 @@ word_idx = get_word_index(w2v_model)
 x, y = get_training_sequences(DATA_DIRECTORY, word_idx, max_seq_length=SEQ_LENGTH, skip=2)
 x = sequences_to_vectors(x, SEQ_LENGTH, w2v_model)
 y = sequences_to_vectors(y, SEQ_LENGTH, w2v_model)
+x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=2112)
+# del x
+# del y
 # In a stateful network, you should only pass inputs with a number of samples that can be
 # divided by the batch size.
-truncated_input_size = x.shape[0] // BATCH_SIZE * BATCH_SIZE
-x, y = x[:truncated_input_size, :, :], y[:truncated_input_size, :, :]
+truncated_input_size_train = x_train.shape[0] // BATCH_SIZE * BATCH_SIZE
+truncated_input_size_val = x_val.shape[0] // BATCH_SIZE * BATCH_SIZE
+x_train, y_train = x_train[:truncated_input_size_train, :, :], y_train[:truncated_input_size_train, :, :]
+x_val, y_val = x_val[:truncated_input_size_val, :, :], y_val[:truncated_input_size_val, :, :]
 
 
 def get_random_sequence():
@@ -96,32 +103,34 @@ def generate_sequence(model, seq_length=100):
     for idx in range(0, seq_length-SEQ_LENGTH+1):
         input_seq = sequence[:, idx:idx+SEQ_LENGTH, :]
         pred = model.predict(input_seq, batch_size=BATCH_SIZE)
-        sequence[0, idx+SEQ_LENGTH-1, :] = pred[0, -1, :]
+        word, _ = w2v_model.wv.similar_by_vector(pred[0, -1, :], topn=1)[0]
+        word_vec = w2v_model.wv[word]
+        sequence[0, idx+SEQ_LENGTH-1, :] = word_vec
     vector_sequence_to_words(sequence[0])
 
 
-model = models.Sequential()
-model.add(
-    layers.LSTM(RNN_SIZE, return_sequences=True, batch_input_shape=[BATCH_SIZE, SEQ_LENGTH, v_size],
-                stateful=STATEFUL)
-)
-model.add(
-    layers.LSTM(RNN_SIZE, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
-)
-model.add(
-    layers.LSTM(RNN_SIZE, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
-)
-model.add(
-    layers.LSTM(v_size, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
-)
-model.compile('rmsprop', 'cosine', metrics=['accuracy'])
+def build_model():
+    model = models.Sequential()
+    model.add(
+        layers.LSTM(RNN_SIZE, return_sequences=True, batch_input_shape=[BATCH_SIZE, SEQ_LENGTH, v_size],
+                    stateful=STATEFUL)
+    )
+    model.add(
+        layers.LSTM(RNN_SIZE, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
+    )
+    model.add(
+        layers.LSTM(RNN_SIZE, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
+    )
+    model.add(
+        layers.LSTM(v_size, return_sequences=True, input_shape=[SEQ_LENGTH, v_size], stateful=STATEFUL)
+    )
+    model.compile('rmsprop', 'cosine', metrics=['accuracy'])
+    return model
 
-filepath = "checkpoints/got/1"
-checkpoint = callbacks.ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
-callbacks_list = [checkpoint]
 
-for e in range(EPOCHS):
-    model.fit(x, y, batch_size=64, epochs=1)
-    generate_sequence(model, 100)
-    if (e + 1) % 5 == 0:
-        model.save('checkpoints/got/{}.h5'.format(e))
+def train(model):
+    for e in range(EPOCHS):
+        model.fit(x_train, y_train, batch_size=64, epochs=1, validation_data=(x_val, y_val))
+        generate_sequence(model, 100)
+        if (e + 1) % 5 == 0:
+            model.save('checkpoints/got/{}.h5'.format(e))
