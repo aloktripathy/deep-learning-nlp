@@ -76,13 +76,18 @@ def vector_sequence_to_words(word_sequence_matrix):
     print('-'*100)
 
 
-def indexes_to_words(word_index_sequence):
+def indexes_to_words(word_index_sequence, write_to_file=False):
     words = []
     for idx in word_index_sequence:
         words.append(w2v_model.wv.index2word[idx])
-    print('-' * 100)
-    print(' '.join(words))
-    print('-' * 100)
+    string = '\n' + '-' * 100
+    string += ('\n' + ' '.join(words))
+    string += '\n' + '-' * 100
+    if write_to_file:
+        with open('generated.txt', 'a+') as fp:
+            fp.write(string)
+    else:
+        print(write_to_file)
 
 
 WORD_2_VEC_MODEL = 'data/game_of_thrones/w2v.model'
@@ -127,7 +132,7 @@ def generate_sequence(model, seq_length=100):
         pred = model.predict(input_seq, batch_size=BATCH_SIZE)
         pred_idx = np.argmax(pred[0][-1])
         sequence[0, idx+SEQ_LENGTH-1] = pred_idx
-    indexes_to_words(sequence[0])
+    indexes_to_words(sequence[0], True)
 
 
 def build_model():
@@ -167,7 +172,7 @@ def train(model):
     for e in range(EPOCHS):
         model.fit(x_train, y_train.reshape(-1, SEQ_LENGTH, 1), batch_size=BATCH_SIZE,
                   epochs=1, validation_data=(x_val, y_val.reshape(-1, SEQ_LENGTH, 1)),
-                  verbose=2, callbacks=[tensorboard])
+                   callbacks=[tensorboard])
         generate_sequence(model, 200)
         if (e + 1) % 5 == 0:
             model.save('checkpoints/got/{}.h5'.format(e+1))
