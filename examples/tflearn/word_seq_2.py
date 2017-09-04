@@ -2,17 +2,15 @@ from utils import SentenceReader
 from gensim.models import Word2Vec
 import numpy as np
 
-import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from keras import backend as K
 from keras.models import Sequential
 from keras.layers import LSTM
 from keras.layers.core import Activation
 from keras.layers.core import Dense
 from keras.layers import Embedding
 from keras.layers import TimeDistributed
-from keras.engine.topology import Layer
 from keras.utils.np_utils import to_categorical
+from keras.callbacks import TensorBoard
 
 
 def generate_word_2_vec(directory, filename, min_count=5, vector_size=50):
@@ -146,9 +144,27 @@ def to_one_hot(sequences):
 
 
 def train(model):
+    tensorboard = TensorBoard(
+        log_dir='/home/ubuntu/log/keras/got/small',
+        histogram_freq=0,
+        batch_size=64,
+        write_graph=True,
+        write_grads=False,
+        write_images=False,
+        embeddings_freq=0,
+        embeddings_layer_names=None,
+        embeddings_metadata=None
+    )
+
     for e in range(EPOCHS):
         model.fit(x_train, y_train.reshape(-1, SEQ_LENGTH, 1), batch_size=BATCH_SIZE,
-                  epochs=1, validation_data=(x_val, y_val.reshape(-1, SEQ_LENGTH, 1)))
-        generate_sequence(model, 100)
+                  epochs=1, validation_data=(x_val, y_val.reshape(-1, SEQ_LENGTH, 1)),
+                  verbose=2, callbacks=[tensorboard])
+        generate_sequence(model, 200)
         if (e + 1) % 5 == 0:
             model.save('checkpoints/got/{}.h5'.format(e+1))
+
+
+if __name__ == '__main__':
+    model = build_model()
+    train(model)
