@@ -81,8 +81,8 @@ def indexes_to_words(word_index_sequence):
 
 WORD_2_VEC_MODEL = 'data/game_of_thrones/w2v.model'
 DATA_DIRECTORY = 'data/game_of_thrones/small'
-SEQ_LENGTH = 15
-RNN_SIZE = 512
+SEQ_LENGTH = 25
+RNN_SIZE = 256
 STATEFUL = True
 BATCH_SIZE = 64
 EPOCHS = 50
@@ -137,7 +137,7 @@ def build_model():
     model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
     model.add(TimeDistributed(Dense(VOCAB_SIZE)))
     model.add(Activation('softmax'))
-    model.compile('rmsprop', 'categorical_crossentropy', metrics=['accuracy'])
+    model.compile('rmsprop', 'sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 
@@ -146,15 +146,9 @@ def to_one_hot(sequences):
 
 
 def train(model):
-    y_val_ = to_one_hot(y_val)
     for e in range(EPOCHS):
-        # We are going this because one massive one-hot Y won't fit our memory.
-        batch_batch_size = BATCH_SIZE * 100
-        for k in range(0, len(x_train), batch_batch_size):
-            x_train_ = x_train[k:k+batch_batch_size, :]
-            y_train_ = to_one_hot(y_train[k:k+batch_batch_size, :])
-            model.fit(x_train_, y_train_, batch_size=BATCH_SIZE,
-                      epochs=1, validation_data=(x_val, y_val_))
+        model.fit(x_train, y_train.reshape(-1, SEQ_LENGTH, 1), batch_size=BATCH_SIZE,
+                  epochs=1, validation_data=(x_val, y_val.reshape(-1, SEQ_LENGTH, 1)))
         generate_sequence(model, 100)
         if (e + 1) % 5 == 0:
-            model.save('checkpoints/got/{}.h5'.format(e))
+            model.save('checkpoints/got/{}.h5'.format(e+1))
