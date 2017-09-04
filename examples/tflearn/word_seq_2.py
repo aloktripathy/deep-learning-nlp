@@ -39,11 +39,16 @@ def get_word_index(w2v_model):
     return {word: idx for idx, word in enumerate(w2v_model.wv.index2word)}
 
 
-def get_training_sequences(directory, word_index, max_seq_length=15, unknown_word=0):
+def get_training_sequences(directory, word_index, max_seq_length=15):
     sequence = []
     reader = SentenceReader(directory)
     for words in reader:
-        sequence += [word_index.get(word, unknown_word) for word in words]
+        for word in words:
+            index = word_index.get(word)
+            # Remove unknown words.
+            if index is None:
+                continue
+            sequence.append(index)
 
     x, y = [], []
     for i in range(0, len(sequence)-max_seq_length):
@@ -141,7 +146,7 @@ def build_model():
     model.add(
         Embedding(input_dim=VOCAB_SIZE, output_dim=N_VECTORS,
                   weights=[weights], input_length=SEQ_LENGTH,
-                  batch_input_shape=[BATCH_SIZE, SEQ_LENGTH], trainable=False),
+                  batch_input_shape=[BATCH_SIZE, SEQ_LENGTH], trainable=True),
     )
     model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
     model.add(LSTM(RNN_SIZE, return_sequences=True, stateful=STATEFUL))
@@ -172,7 +177,7 @@ def train(model):
     for e in range(EPOCHS):
         model.fit(x_train, y_train.reshape(-1, SEQ_LENGTH, 1), batch_size=BATCH_SIZE,
                   epochs=1, validation_data=(x_val, y_val.reshape(-1, SEQ_LENGTH, 1)),
-                   callbacks=[tensorboard])
+                  callbacks=[tensorboard])
         generate_sequence(model, 200)
         if (e + 1) % 5 == 0:
             model.save('checkpoints/got/{}.h5'.format(e+1))
