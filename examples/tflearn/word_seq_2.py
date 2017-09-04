@@ -1,4 +1,5 @@
-from utils import SentenceReader
+import os
+import sys
 from gensim.models import Word2Vec
 import numpy as np
 
@@ -11,6 +12,13 @@ from keras.layers import Embedding
 from keras.layers import TimeDistributed
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import TensorBoard
+
+
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+if ROOT_PATH not in sys.path:
+    sys.path.insert(0, ROOT_PATH)
+
+from utils import SentenceReader
 
 
 def generate_word_2_vec(directory, filename, min_count=5, vector_size=50):
