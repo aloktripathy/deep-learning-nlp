@@ -9,8 +9,8 @@ def generate_word_2_vec(directory, filename, min_count=5, vector_size=50):
     model = Word2Vec(sentences, min_count=min_count, size=vector_size)
     model.save(filename)
     # generate_word_2_vec(
-    #     '../../data/game_of_thrones/small',
-    #     '../../data/game_of_thrones/small/w2v.model',
+    #     '../../data/got/small',
+    #     '../../data/got/small/w2v.model',
     # )
 
 
@@ -68,8 +68,8 @@ def indexes_to_words(word_index_sequence):
     print('-' * 100)
 
 
-WORD_2_VEC_MODEL = 'data/game_of_thrones/w2v.model'
-DATA_DIRECTORY = 'data/game_of_thrones/small'
+WORD_2_VEC_MODEL = 'data/got/w2v.model'
+DATA_DIRECTORY = 'data/got/small'
 SEQ_LENGTH = 15
 RNN_SIZE = 512
 STATEFUL = True
@@ -117,7 +117,7 @@ m = tflearn.SequenceGenerator(g, dictionary=word_idx,
                               seq_maxlen=SEQ_LENGTH,
                               clip_gradients=5.0,
                               max_checkpoints=3,
-                              checkpoint_path='checkpoints/got/tfl/')
+                              checkpoint_path='model_data/got/tfl/')
 
 embedding_weights = tflearn.get_layer_variables_by_name('embedding_layer')[0]
 m.set_weights(embedding_weights, w2v_model.wv.syn0)

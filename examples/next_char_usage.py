@@ -14,7 +14,7 @@ import numpy as np
 from tflearn.data_utils import string_to_semi_redundant_sequences
 from tflearn.data_utils import chars_to_dictionary
 
-with open('../data/shakespear/main/romeo_and_juliet.txt') as fp:
+with open('../data/shakespear/main/all.txt') as fp:
     txt = ''.join(fp.readlines())
 
 
@@ -79,7 +79,7 @@ writer = _get_log_summary_writer(session.graph, 'next-char-b1', 1)
 
 s = model.restore_model(
     session,
-    '/home/alok/Desktop/deep-learning/nlp_cs224n/checkpoints/shakespeare/',
+    '/home/alok/Desktop/deep-learning/nlp_cs224n/model_data/shakespeare/',
     '1-50.meta'
 )
 if s:
@@ -103,6 +103,6 @@ for e in range(epochs):
         seq = model.generate_sequence(session, seed, 1000, sequence_length)
         print(index_to_chars(seq, char_idx))
 
-        saver.save(session, '../checkpoints/shakespeare/1', global_step=e+1)
+        saver.save(session, '../model_data/shakespeare/1', global_step=e+1)
 
 session.close()

@@ -4,7 +4,7 @@ import tflearn
 from tflearn.data_utils import *
 
 path = "../../data/got-1.txt"
-char_idx_file = '../../checkpoints/got-1.1/char_idx.pickle'
+char_idx_file = '../../model_data/got-1.1/char_idx.pickle'
 
 maxlen = 25
 
@@ -33,7 +33,7 @@ g = tflearn.regression(g, optimizer='adam', loss='categorical_crossentropy',
 m = tflearn.SequenceGenerator(g, dictionary=char_idx,
                               seq_maxlen=maxlen,
                               clip_gradients=5.0,
-                              checkpoint_path='../../checkpoints/got-1.1/m')
+                              checkpoint_path='../../model_data/got-1.1/m')
 
 for i in range(50):
     seed = random_sequence_from_textfile(path, maxlen)

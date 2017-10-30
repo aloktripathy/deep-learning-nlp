@@ -106,7 +106,7 @@ class RNNLearn(metaclass=ABCMeta):
         # final_state : [batch_size, layer_size * rnn_size]
         output, final_state = tf.nn.dynamic_rnn(cell, self._x_runnable, initial_state=init_state)
 
-        # Give the variables names so that we can fetch them from checkpoints.
+        # Give the variables names so that we can fetch them from model_data.
         final_state = tf.identity(final_state, 'final-state')
         return output, init_state, final_state, cell
 
