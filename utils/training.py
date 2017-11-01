@@ -33,6 +33,34 @@ def get_training_sequences(directory, word_index, max_seq_length=15):
     return np.array(x, dtype=np.uint16), np.array(y, dtype=np.uint16)
 
 
+def get_streamlined_training_sequences(directory, word_index, batch_size, seq_length):
+    sequence = []
+    reader = SentenceReader(directory)
+    for words in reader:
+        for word in words:
+            index = word_index.get(word)
+            # Remove unknown words.
+            if index is None:
+                continue
+            sequence.append(index)
+
+    # Perform batching.
+    return make_streamlined_batches(np.array(sequence, dtype=np.int16), batch_size, seq_length)
+
+
+def make_streamlined_batches(sequence, batch_size, seq_length):
+    n = sequence.shape[0] // batch_size * batch_size
+    sequence = sequence[:n]
+    batched_seq = sequence.reshape([64, -1])
+    n_batches = batched_seq.shape[1] - seq_length + 1
+    x = np.zeros([n_batches - 1, batch_size, seq_length], dtype=sequence.dtype)
+    y = np.zeros([n_batches - 1, batch_size, seq_length], dtype=sequence.dtype)
+    for i in range(n_batches - 1):
+        x[i, :, :] = batched_seq[:, i:i + seq_length]
+        y[i, :, :] = batched_seq[:, i + 1:i + seq_length + 1]
+    return x, y
+
+
 class SaveModel(Callback):
     """This is a Keras callback that saves a model after n epochs."""
     def __init__(self, save_every, model, model_dir):
@@ -66,6 +94,16 @@ class RelaxSystem(Callback):
             print('System is relaxing for next {} seconds...'.format(self._cooling_duration))
             time.sleep(self._cooling_duration)
             self._last_relaxed_time = time.time()
+
+
+class ResetStates(Callback):
+    """This callback resets the LSTM states of a model before training for an epoch."""
+    def __init__(self, model):
+        super(ResetStates, self).__init__()
+        self._model = model
+
+    def on_epoch_end(self, epoch, logs=None):
+        self._model.reset_states()
 
 
 def load_keras_model(model_dir):

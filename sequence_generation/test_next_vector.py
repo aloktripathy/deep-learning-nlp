@@ -10,22 +10,27 @@ w2v_model = load_word_2_vec_model(w2v_model_file)
 n_vectors = w2v_model.vector_size
 vocab_size = len(w2v_model.wv.vocab)
 word_idx = get_word_index(w2v_model)
-x_train, y_train, x_val, y_val = get_data_set(data_dir, BATCH_SIZE, word_idx, SEQ_LENGTH)
+x_train, x_val, y_train, y_val = get_data_set(data_dir, BATCH_SIZE, word_idx, SEQ_LENGTH)
 
 
-GEN_SEQ_LEN = 100
-TEMPERATURE = 100
+GEN_SEQ_LEN = 1000
+TEMPERATURE = 1
 
 model, e = load_keras_model('../model_data/got/small/')
 sequence = np.zeros([BATCH_SIZE, GEN_SEQ_LEN], dtype=np.int32)
-sequence[0, :SEQ_LENGTH] = get_random_sequence(x_train)
+idx = np.random.randint(len(x_train))
+sequence[0, :SEQ_LENGTH] = x_train[idx]
 
 input_seq = sequence[:, 0:SEQ_LENGTH]
 
 pred = model.predict(input_seq, batch_size=BATCH_SIZE)
 
-print('Actual sentence -')
+print('Actual input -')
 print(indexes_to_words(sequence[0], w2v_model))
+
+print('Expected output -')
+print(y_train.min(), y_train.max(), x_train.shape, y_train.shape, x_val.shape, y_val.shape)
+print(indexes_to_words(y_train[idx], w2v_model))
 
 print('What the NN thinks -')
 print(' '.join([w2v_model.wv.index2word[i.argmax()] for i in pred[0]]))

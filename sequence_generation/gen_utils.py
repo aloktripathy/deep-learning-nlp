@@ -16,6 +16,7 @@ def indexes_to_words(word_index_sequence, w2v_model):
 
 
 def temperature_sample(a, temperature):
+    return a.argmax()
     a[a==0] = 1e-20
     a = np.log(a) / temperature
     a = np.exp(a) / np.sum(np.exp(a))

@@ -1,5 +1,6 @@
 
 checkpoints/*
+model_data/*
 
 ### Django ###
 *.log
